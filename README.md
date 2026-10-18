@@ -67,6 +67,8 @@ On the original Windows development machine, `./run-civicdesk.ps1` selects the p
 
 The repository includes a PHP Function entry point and Vercel routing. `package.json` pins the Node runtime to **22.x**, which the `vercel-php@0.9.0` adapter expects. Keep the Vercel project’s **Root Directory** at `./` (the directory containing `composer.json` and `vercel.json`) and use the **Other** preset. No frontend build or output directory is required.
 
+The Vercel PHP runtime installs Composer dependencies for the function. `laravel/pail` remains a development-only dependency; Composer's production install omits it, then the `vercel` Composer script rebuilds Laravel's package manifest from the installed production packages. Generated `bootstrap/cache/*.php` manifests are intentionally excluded from Git so a local development manifest cannot register missing development providers in production.
+
 ### 1. Configure production environment variables
 
 Add these individually in **Vercel → Project → Settings → Environment Variables**, selecting **Production** for each. Do not commit `.env` or paste it into the repository.
