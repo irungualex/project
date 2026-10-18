@@ -80,6 +80,7 @@ Add these individually in **Vercel → Project → Settings → Environment Vari
 | `APP_KEY` | A generated Laravel key, kept private and stable across deployments |
 | `APP_URL` | The deployed `https://` URL |
 | `DATABASE_URL` | Neon pooled PostgreSQL connection URL |
+| `NEON_ENDPOINT_ID` | Optional Neon compute ID (`ep-...`); normally derived from the URL host |
 | `SESSION_DRIVER` | `cookie` |
 | `SESSION_ENCRYPT` | `true` |
 | `CACHE_STORE` | `array` |
@@ -93,7 +94,7 @@ Generate a key locally with `php artisan key:generate --show` if you do not alre
 
 ### 2. Configure persistent database and images
 
-Use Neon’s **pooled** URL for `DATABASE_URL` during web requests. Use its **direct** URL only when running schema migrations. From a trusted machine, temporarily set `DATABASE_URL` to Neon’s direct URL (and keep it out of Git), then run `php artisan migrate --force` against production. To create the staff account once, set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in the same secure environment and run:
+Use Neon’s **pooled** URL for `DATABASE_URL` during web requests. The app derives Neon’s endpoint ID from the database host and passes it as a PostgreSQL startup option for Vercel PHP clients that do not send SNI. If automatic detection is not possible, set `NEON_ENDPOINT_ID` to the endpoint ID shown in Neon (the `ep-...` ID, without a `-pooler` suffix). Use Neon’s **direct** URL only when running schema migrations. From a trusted machine, temporarily set `DATABASE_URL` to Neon’s direct URL (and keep it out of Git), then run `php artisan migrate --force` against production. To create the staff account once, set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in the same secure environment and run:
 
 ```powershell
 php artisan db:seed --class=AdminUserSeeder --force

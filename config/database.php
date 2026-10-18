@@ -2,6 +2,17 @@
 
 use Illuminate\Support\Str;
 
+$databaseUrl = env('DATABASE_URL');
+$databaseHost = $databaseUrl ? parse_url($databaseUrl, PHP_URL_HOST) : null;
+$neonEndpointId = env('NEON_ENDPOINT_ID');
+
+// The Vercel PHP runtime's libpq may not send TLS SNI. Neon accepts the
+// endpoint ID as a startup option; derive it from the URL host when possible.
+if (! $neonEndpointId && is_string($databaseHost) && str_ends_with($databaseHost, '.neon.tech')) {
+    $neonEndpointId = explode('.', $databaseHost, 2)[0];
+    $neonEndpointId = preg_replace('/-pooler$/', '', $neonEndpointId);
+}
+
 return [
     'default' => env('DB_CONNECTION') ?: (env('DATABASE_URL') ? 'pgsql' : 'sqlite'),
     'connections' => [
@@ -39,7 +50,7 @@ return [
         ],
         'pgsql' => [
             'driver' => 'pgsql',
-            'url' => env('DATABASE_URL') ?: null,
+            'url' => $databaseUrl ?: null,
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '5432'),
             'database' => env('DB_DATABASE', 'civicdesk'),
@@ -50,6 +61,9 @@ return [
             'prefix_indexes' => true,
             'search_path' => env('DB_SEARCH_PATH', 'public'),
             'sslmode' => env('DB_SSLMODE', 'require'),
+            'server_options' => is_string($neonEndpointId) && str_starts_with($neonEndpointId, 'ep-')
+                ? ['endpoint' => $neonEndpointId]
+                : [],
         ],
     ],
     'migrations' => [
