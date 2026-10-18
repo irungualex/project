@@ -86,3 +86,22 @@ The suite covers registration, authorization, request creation, image storage, c
 ## Production deployment
 
 Point the web server document root to `public/`, not the repository root. Configure production environment values, HTTPS, `APP_DEBUG=false`, a strong `APP_KEY`, and durable database and file storage. This starter stores uploaded photos on Laravel's public disk; use private storage and authenticated image delivery if photos may contain sensitive information. Never commit `.env` or disclose administrator credentials.
+
+### Deploying to Vercel
+
+The repository includes a Vercel PHP Function entry point and route configuration. In Vercel, set the **Root Directory** to the project root (the folder containing `vercel.json` and `composer.json`), then redeploy. Do not set the root directory to `public`; Vercel needs the Laravel application and its Composer dependencies to build the PHP function.
+
+Add these environment variables in the Vercel project settings for each environment you deploy:
+
+- `APP_KEY`: the existing Laravel application key. Keep it private and consistent between deployments.
+- `APP_ENV`: `production`
+- `APP_DEBUG`: `false`
+- `APP_URL`: the deployed HTTPS domain
+- `DATABASE_URL`: the Neon PostgreSQL connection string. The application reads `DATABASE_URL` for PostgreSQL; setting only `DB_URL` will not select Neon.
+- `ADMIN_EMAIL` and `ADMIN_PASSWORD`: the administrator credentials used when seeding the database.
+- `SESSION_DRIVER`: `cookie` to avoid relying on Vercel's temporary filesystem for login sessions.
+- `CACHE_STORE`: `array`
+- `LOG_CHANNEL`: `stderr`
+- `VIEW_COMPILED_PATH`: `/tmp/civicdesk-views`
+
+Run pending migrations and seed the administrator against Neon using its **direct** (non-pooled) connection before deploying or signing in. Use the pooled URL as `DATABASE_URL` for normal Vercel requests. Vercel's filesystem is temporary, so uploaded images must be moved to durable object storage; local image uploads will not persist across function invocations.
