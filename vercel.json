@@ -17,7 +17,8 @@
   },
   "routes": [
     {
-      "handle": "filesystem"
+      "src": "/css/(.*)",
+      "dest": "/public/css/$1"
     },
     {
       "src": "/(.*)",
