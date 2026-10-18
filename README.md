@@ -28,7 +28,7 @@ PHP 8.3 and Composer 2 are installed in the current Windows user's local applica
 
 ## Fresh installation on another machine
 
-Requirements: PHP 8.2 or newer, Composer 2, and PHP's SQLite extension. From the project root in PowerShell:
+Requirements: PHP 8.2 or newer, Composer 2, and PHP's SQLite and `pdo_pgsql` extensions (the latter is required for Neon). From the project root in PowerShell:
 
 ```powershell
 composer install
@@ -54,7 +54,15 @@ php artisan db:seed --class=AdminUserSeeder
 
 If `php -v` reports an older version, configure PHP 8.2+ in your PATH or use its full executable path for Composer and Artisan commands. On the original setup machine, `.\run-civicdesk.ps1` handles the PHP version automatically.
 
-SQLite is configured by default. To use MySQL, set `DB_CONNECTION=mysql`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD` in `.env` before migrating.
+SQLite is used locally while `DATABASE_URL` is empty. To switch to Neon, open the Neon Console, choose your project and branch, select **Connect**, and copy the pooled PostgreSQL connection string. Paste it as the value of `DATABASE_URL` in `.env`—no other database setting needs to change. The app selects PostgreSQL automatically when this value is set. Keep the URL private; it includes your database password. The provided project-local PHP runtime includes the `pdo_pgsql` extension.
+
+Neon uses transaction pooling on pooled endpoints. Use the **direct (non-pooled)** endpoint for schema migrations. The `.\run-civicdesk.ps1` startup script detects a Neon `-pooler` endpoint and temporarily uses its corresponding direct hostname for `php artisan migrate`, then restores the pooled URL for the application. To seed a fresh Neon database, first run `php artisan migrate --seed --force` with `DATABASE_URL` set to the **direct** connection string, or use the direct URL temporarily in `.env`; then use the pooled URL for normal app requests. This creates a fresh hosted database; it does not copy data from local SQLite.
+
+Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in the same `.env` before seeding. Use a unique password of at least 12 characters. Changing these environment values does not change an administrator who is already in the database; run `php artisan db:seed --class=AdminUserSeeder` after changing them.
+
+Neon stores the application's database records, not image files. Image uploads currently use Laravel's local public filesystem disk and therefore need a separate persistent object-storage service before deploying to Vercel. Never point the Vercel deployment at a local SQLite database or filesystem for persistent application data.
+
+To use MySQL instead, set `DB_CONNECTION=mysql`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD` in `.env` before migrating.
 
 ## Features
 
