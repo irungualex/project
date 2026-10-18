@@ -2,12 +2,14 @@
 
 use Illuminate\Support\Str;
 
+$isVercel = (bool) env('VERCEL', false) || str_starts_with(base_path(), '/var/task/');
+
 return [
     'driver' => env('SESSION_DRIVER', 'file'),
     'lifetime' => (int) env('SESSION_LIFETIME', 120),
     'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
     'encrypt' => env('SESSION_ENCRYPT', true),
-    'files' => storage_path('framework/sessions'),
+    'files' => $isVercel ? '/tmp/civicdesk-sessions' : storage_path('framework/sessions'),
     'connection' => env('SESSION_CONNECTION'),
     'table' => env('SESSION_TABLE', 'sessions'),
     'store' => env('SESSION_STORE'),

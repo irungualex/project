@@ -1,8 +1,9 @@
 <?php
 
-$compiledPath = env('VIEW_COMPILED_PATH', storage_path('framework/views'));
+$isVercel = (bool) env('VERCEL', false) || str_starts_with(base_path(), '/var/task/');
+$compiledPath = env('VIEW_COMPILED_PATH', $isVercel ? '/tmp/civicdesk-views' : storage_path('framework/views'));
 
-if (! is_dir($compiledPath) && ! mkdir($compiledPath, 0775, true) && ! is_dir($compiledPath)) {
+if (! is_dir($compiledPath) && ! @mkdir($compiledPath, 0775, true) && ! is_dir($compiledPath)) {
     throw new RuntimeException("Unable to create the compiled view directory: {$compiledPath}");
 }
 

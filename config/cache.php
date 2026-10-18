@@ -2,14 +2,16 @@
 
 use Illuminate\Support\Str;
 
+$isVercel = (bool) env('VERCEL', false) || str_starts_with(base_path(), '/var/task/');
+
 return [
     'default' => env('CACHE_STORE', 'file'),
     'stores' => [
         'array' => ['driver' => 'array', 'serialize' => false],
         'file' => [
             'driver' => 'file',
-            'path' => storage_path('framework/cache/data'),
-            'lock_path' => storage_path('framework/cache/data'),
+            'path' => $isVercel ? '/tmp/civicdesk-cache' : storage_path('framework/cache/data'),
+            'lock_path' => $isVercel ? '/tmp/civicdesk-cache' : storage_path('framework/cache/data'),
         ],
         'database' => [
             'driver' => 'database',
