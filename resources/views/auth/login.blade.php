@@ -5,7 +5,7 @@
 @section('content')
 <div class="auth-shell">
     <section class="auth-story">
-        <a class="brand" href="{{ route('login') }}"><span class="brand-mark">⌂</span><span>CivicDesk</span></a>
+            <a class="brand" href="{{ route('home') }}"><span class="brand-mark">C</span><span>CivicDesk</span></a>
         <div class="story-copy">
             <span class="eyebrow">Your community, heard</span>
             <h1>Better neighborhoods start with you.</h1>

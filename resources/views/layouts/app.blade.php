@@ -16,14 +16,14 @@
     @php($admin = auth()->user()->isAdmin())
     <div class="workspace">
         <aside class="sidebar" id="sidebar">
-            <a class="brand" href="{{ route('dashboard') }}"><span class="brand-mark">⌂</span><span>CivicDesk</span></a>
+            <a class="brand" href="{{ route('dashboard') }}"><span class="brand-mark">C</span><span>CivicDesk</span></a>
             <div class="side-label">Workspace</div>
             <nav class="nav-list" aria-label="Main navigation">
                 <a class="nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}"><span class="nav-icon">▦</span><span>Overview</span></a>
                 @if ($admin)
-                    <a class="nav-item {{ request()->routeIs('admin.requests.*') ? 'active' : '' }}" href="{{ route('admin.requests.index') }}"><span class="nav-icon">☷</span><span>All requests</span><span class="nav-badge">{{ \App\Models\ServiceRequest::count() }}</span></a>
+                    <a class="nav-item {{ request()->routeIs('admin.requests.*') ? 'active' : '' }}" href="{{ route('admin.requests.index') }}"><span class="nav-icon">☷</span><span>All requests</span></a>
                 @else
-                    <a class="nav-item {{ request()->routeIs('requests.index') ? 'active' : '' }}" href="{{ route('requests.index') }}"><span class="nav-icon">☷</span><span>My requests</span><span class="nav-badge">{{ auth()->user()->serviceRequests()->count() }}</span></a>
+                    <a class="nav-item {{ request()->routeIs('requests.index', 'requests.show') ? 'active' : '' }}" href="{{ route('requests.index') }}"><span class="nav-icon">☷</span><span>My requests</span></a>
                     <a class="nav-item {{ request()->routeIs('requests.create') ? 'active' : '' }}" href="{{ route('requests.create') }}"><span class="nav-icon">＋</span><span>Submit a request</span></a>
                 @endif
             </nav>
@@ -40,7 +40,7 @@
         </aside>
         <section class="main-area">
             <header class="topbar">
-                <div class="breadcrumb"><button class="mobile-menu" id="mobile-menu" type="button" aria-label="Toggle navigation">☰</button> CivicDesk <span>/</span> <strong>@yield('breadcrumb', 'Overview')</strong></div>
+                <div class="breadcrumb"><button class="mobile-menu" id="mobile-menu" type="button" aria-label="Toggle navigation" aria-controls="sidebar" aria-expanded="false">☰</button> CivicDesk <span>/</span> <strong>@yield('breadcrumb', 'Overview')</strong></div>
                 <div class="topbar-right"><span class="topbar-date">{{ now()->format('D, M j') }}</span><span class="role-pill">{{ $admin ? 'ADMIN PORTAL' : 'CITIZEN PORTAL' }}</span></div>
             </header>
             <main class="content">
@@ -55,8 +55,12 @@
     <main>@yield('content')</main>
 @endauth
 <script>
-    document.getElementById('mobile-menu')?.addEventListener('click', () => {
-        document.getElementById('sidebar')?.classList.toggle('open');
+    const menuButton = document.getElementById('mobile-menu');
+    const sidebar = document.getElementById('sidebar');
+    menuButton?.addEventListener('click', () => {
+        const expanded = menuButton.getAttribute('aria-expanded') === 'true';
+        menuButton.setAttribute('aria-expanded', String(!expanded));
+        sidebar?.classList.toggle('open', !expanded);
     });
 </script>
 </body>

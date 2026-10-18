@@ -16,7 +16,7 @@
 <section class="stats-grid">
     @php
         $stats = $admin
-            ? [['Total requests', $total, 'Across all categories', '▣'], ['Open requests', $open, 'Awaiting completion', '◷'], ['Resolved', $resolved, 'Successfully completed', '✓'], ['Citizens served', $citizens, 'Unique requesters', '♧']]
+            ? [['Total requests', $total, 'Across all categories', '▣'], ['Open requests', $open, 'Awaiting completion', '◷'], ['Resolved', $resolved, 'Successfully completed', '✓'], ['Registered citizens', $citizens, 'Community accounts', '♧']]
             : [['My requests', $total, 'Submitted by you', '▣'], ['Open requests', $open, 'Awaiting completion', '◷'], ['Resolved', $resolved, 'Successfully completed', '✓'], ['In progress', $inProgress, 'Being worked on', '↗']];
     @endphp
     @foreach ($stats as [$label, $value, $note, $icon])
@@ -29,7 +29,7 @@
         @if ($requests->isNotEmpty())
             <div class="table-wrap"><table><thead><tr><th>Request</th>@if($admin)<th>Citizen</th>@endif<th>Category</th><th>Date submitted</th><th>Status</th></tr></thead><tbody>
                 @foreach ($requests as $serviceRequest)
-                    <tr><td><div class="request-title">{{ $serviceRequest->request_number }}<span>{{ $serviceRequest->location }}</span></div></td>@if($admin)<td>{{ $serviceRequest->displayCitizenName() }}</td>@endif<td>{{ $serviceRequest->category }}</td><td>{{ $serviceRequest->created_at->format('M j, Y') }}</td><td><span class="status status-{{ str($serviceRequest->status)->slug() }}">{{ $serviceRequest->status }}</span></td></tr>
+                    <tr><td><a class="request-title" href="{{ route('requests.show', $serviceRequest) }}">{{ $serviceRequest->request_number }}<span>{{ $serviceRequest->location }}</span></a></td>@if($admin)<td>{{ $serviceRequest->displayCitizenName() }}</td>@endif<td>{{ $serviceRequest->category }}</td><td>{{ $serviceRequest->created_at->format('M j, Y') }}</td><td><span class="status status-{{ str($serviceRequest->status)->slug() }}">{{ $serviceRequest->status }}</span></td></tr>
                 @endforeach
             </tbody></table></div>
         @else

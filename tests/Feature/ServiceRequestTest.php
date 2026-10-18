@@ -15,7 +15,8 @@ class ServiceRequestTest extends TestCase
 
     public function test_a_citizen_can_submit_a_request_and_only_see_their_own_requests(): void
     {
-        Storage::fake('public');
+        $disk = config('filesystems.default');
+        Storage::fake($disk);
         $citizen = User::factory()->create();
         $otherCitizen = User::factory()->create();
         ServiceRequest::create([
@@ -45,7 +46,7 @@ class ServiceRequestTest extends TestCase
             ->assertOk()
             ->assertSee('Kilimani, Block 4')
             ->assertDontSee('Another street');
-        Storage::disk('public')->assertExists($citizen->serviceRequests()->first()->image_path);
+        Storage::disk($disk)->assertExists($citizen->serviceRequests()->first()->image_path);
     }
 
     public function test_an_administrator_can_advance_a_request_status(): void

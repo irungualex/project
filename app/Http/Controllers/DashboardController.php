@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ServiceRequest;
+use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -20,17 +21,25 @@ class DashboardController extends Controller
             ->get();
 
         $scope = fn (): Builder => ServiceRequest::query()->visibleTo($user);
+        $counts = (clone $scope())->selectRaw(
+            'COUNT(*) as total, '
+            .'SUM(CASE WHEN status != ? THEN 1 ELSE 0 END) as open_count, '
+            .'SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as pending_count, '
+            .'SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as progress_count, '
+            .'SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as resolved_count',
+            ['Resolved', 'Pending', 'In Progress', 'Resolved'],
+        )->first();
 
         return view('dashboard', [
             'requests' => $requests,
-            'total' => $scope()->count(),
-            'open' => $scope()->where('status', '!=', 'Resolved')->count(),
-            'pending' => $scope()->where('status', 'Pending')->count(),
-            'inProgress' => $scope()->where('status', 'In Progress')->count(),
-            'resolved' => $scope()->where('status', 'Resolved')->count(),
+            'total' => (int) $counts->total,
+            'open' => (int) $counts->open_count,
+            'pending' => (int) $counts->pending_count,
+            'inProgress' => (int) $counts->progress_count,
+            'resolved' => (int) $counts->resolved_count,
             'citizens' => $user->isAdmin()
-                ? $scope()->whereNotNull('citizen_name')->distinct()->count('citizen_name')
-                : $scope()->where('status', 'In Progress')->count(),
+                ? User::query()->where('role', 'citizen')->count()
+                : null,
         ]);
     }
 }

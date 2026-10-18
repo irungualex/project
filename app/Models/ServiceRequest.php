@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ServiceRequest extends Model
 {
@@ -40,6 +41,11 @@ class ServiceRequest extends Model
     public function citizen(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function statusUpdates(): HasMany
+    {
+        return $this->hasMany(ServiceRequestStatusUpdate::class)->with('changedBy:id,name')->latest();
     }
 
     public function scopeVisibleTo(Builder $query, User $user): Builder

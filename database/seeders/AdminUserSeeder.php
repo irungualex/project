@@ -10,8 +10,8 @@ class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
-        $email = env('ADMIN_EMAIL');
-        $password = env('ADMIN_PASSWORD');
+        $email = config('civicdesk.admin.email');
+        $password = config('civicdesk.admin.password');
 
         if (! is_string($email) || ! filter_var($email, FILTER_VALIDATE_EMAIL)
             || ! is_string($password) || strlen($password) < 12) {

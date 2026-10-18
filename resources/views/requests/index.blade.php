@@ -14,25 +14,19 @@
         @if(request()->hasAny(['search', 'status', 'category']))<a class="btn btn-outline" href="{{ $admin ? route('admin.requests.index') : route('requests.index') }}">Clear</a>@endif
     </form>
     @if($requests->isNotEmpty())
-        <div class="table-wrap"><table><thead><tr><th>Request</th>@if($admin)<th>Citizen</th>@endif<th>Category</th><th>Date submitted</th><th>Status</th>@if($admin)<th>Update status</th>@endif</tr></thead><tbody>
+        <div class="table-wrap"><table><thead><tr><th>Request</th>@if($admin)<th>Citizen</th>@endif<th>Category</th><th>Date submitted</th><th>Status</th>@if($admin)<th>Details</th>@endif</tr></thead><tbody>
             @foreach($requests as $serviceRequest)
                 <tr>
-                    <td><div class="request-title">{{ $serviceRequest->request_number }}<span>{{ $serviceRequest->location }}</span></div></td>
+                    <td><a class="request-title" href="{{ route('requests.show', $serviceRequest) }}">{{ $serviceRequest->request_number }}<span>{{ $serviceRequest->location }}</span></a></td>
                     @if($admin)<td>{{ $serviceRequest->displayCitizenName() }}</td>@endif
                     <td>{{ $serviceRequest->category }}</td>
                     <td>{{ $serviceRequest->created_at->format('M j, Y') }}</td>
                     <td><span class="status status-{{ str($serviceRequest->status)->slug() }}">{{ $serviceRequest->status }}</span></td>
                     @if($admin)
-                        <td>
-                            @if($next = match($serviceRequest->status){ 'Pending' => 'In Progress', 'In Progress' => 'Resolved', default => null })
-                                <form method="POST" action="{{ route('admin.requests.status', $serviceRequest) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="{{ $next }}"><button class="btn btn-light btn-small" type="submit">Mark {{ strtolower($next) }}</button></form>
-                            @else
-                                <span class="muted">Complete</span>
-                            @endif
-                        </td>
+                        <td><a class="text-link" href="{{ route('requests.show', $serviceRequest) }}">Review request</a></td>
                     @endif
                 </tr>
-                <tr class="description-row"><td colspan="{{ $admin ? 6 : 4 }}">{{ $serviceRequest->description }}@if($serviceRequest->image_path)<a class="text-link photo-link" href="{{ Storage::disk('public')->url($serviceRequest->image_path) }}" target="_blank" rel="noopener">View photo ↗</a>@endif</td></tr>
+                <tr class="description-row"><td colspan="{{ $admin ? 6 : 4 }}">{{ str($serviceRequest->description)->limit(180) }}</td></tr>
             @endforeach
         </tbody></table></div>
         <div class="pagination">{{ $requests->links() }}</div>

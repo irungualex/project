@@ -8,9 +8,10 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->call([
-            AdminUserSeeder::class,
-            DemoServiceRequestSeeder::class,
-        ]);
+        $this->call(AdminUserSeeder::class);
+
+        if (! app()->isProduction()) {
+            $this->call(DemoServiceRequestSeeder::class);
+        }
     }
 }

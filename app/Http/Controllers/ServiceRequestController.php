@@ -2,16 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AdvanceServiceRequestStatus;
+use App\Http\Requests\FilterServiceRequests;
+use App\Http\Requests\StoreServiceRequest as StoreServiceRequestForm;
 use App\Models\ServiceRequest;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ServiceRequestController extends Controller
 {
-    public function index(Request $request): View|RedirectResponse
+    public function index(FilterServiceRequests $request): View|RedirectResponse
     {
         if ($request->user()->isAdmin()) {
             return redirect()->route('admin.requests.index');
@@ -20,93 +25,117 @@ class ServiceRequestController extends Controller
         return $this->listing($request, false);
     }
 
-    public function adminIndex(Request $request): View
+    public function adminIndex(FilterServiceRequests $request): View
     {
         return $this->listing($request, true);
     }
 
+    public function show(ServiceRequest $serviceRequest): View
+    {
+        $this->authorize('view', $serviceRequest);
+
+        return view('requests.show', [
+            'serviceRequest' => $serviceRequest->load([
+                'citizen:id,name',
+                'statusUpdates.changedBy:id,name',
+            ]),
+            'admin' => request()->user()->isAdmin(),
+            'nextStatus' => $this->nextStatus($serviceRequest->status),
+        ]);
+    }
+
+    public function image(ServiceRequest $serviceRequest): StreamedResponse
+    {
+        $this->authorize('view', $serviceRequest);
+        abort_unless($serviceRequest->image_path, 404);
+
+        return Storage::disk(config('filesystems.default'))->response(
+            $serviceRequest->image_path,
+            basename($serviceRequest->image_path),
+            ['Cache-Control' => 'private, no-store'],
+        );
+    }
+
     public function create(): View
     {
-        abort_if(request()->user()->isAdmin(), 403);
-
-        return view('requests.create', [
-            'categories' => ServiceRequest::CATEGORIES,
-        ]);
+        return view('requests.create', ['categories' => ServiceRequest::CATEGORIES]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StoreServiceRequestForm $request): RedirectResponse
     {
-        abort_if($request->user()->isAdmin(), 403);
+        $validated = $request->validated();
 
-        $validated = $request->validate([
-            'category' => ['required', Rule::in(ServiceRequest::CATEGORIES)],
-            'location' => ['required', 'string', 'max:160'],
-            'description' => ['required', 'string', 'min:10', 'max:1200'],
-            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:1536'],
-        ]);
-
-        $serviceRequest = $request->user()->serviceRequests()->create([
-            'citizen_name' => $request->user()->name,
-            'category' => $validated['category'],
-            'location' => $validated['location'],
-            'description' => $validated['description'],
-            'image_path' => $request->file('image')?->store('service-requests', 'public'),
-            'status' => 'Pending',
-        ]);
-
-        $serviceRequest->update([
-            'request_number' => 'CD-'.str_pad((string) $serviceRequest->id, 6, '0', STR_PAD_LEFT),
-        ]);
-
-        return redirect()->route('requests.index')->with('status', "Request {$serviceRequest->request_number} submitted successfully.");
-    }
-
-    public function updateStatus(Request $request, ServiceRequest $serviceRequest): RedirectResponse
-    {
-        $validated = $request->validate([
-            'status' => ['required', Rule::in(ServiceRequest::STATUSES)],
-        ]);
-
-        $nextStatus = match ($serviceRequest->status) {
-            'Pending' => 'In Progress',
-            'In Progress' => 'Resolved',
-            default => null,
-        };
-
-        if ($validated['status'] !== $nextStatus) {
-            throw ValidationException::withMessages([
-                'status' => 'Requests can only move forward one status at a time.',
+        $serviceRequest = DB::transaction(function () use ($request, $validated): ServiceRequest {
+            $serviceRequest = $request->user()->serviceRequests()->create([
+                'citizen_name' => $request->user()->name,
+                'category' => $validated['category'],
+                'location' => $validated['location'],
+                'description' => $validated['description'],
+                'image_path' => $request->file('image')?->store('service-requests', config('filesystems.default')),
+                'status' => 'Pending',
             ]);
-        }
 
-        $serviceRequest->update(['status' => $validated['status']]);
+            $serviceRequest->update([
+                'request_number' => 'CD-'.str_pad((string) $serviceRequest->id, 6, '0', STR_PAD_LEFT),
+            ]);
 
-        return back()->with('status', "{$serviceRequest->request_number} updated to {$serviceRequest->status}.");
+            $serviceRequest->statusUpdates()->create([
+                'to_status' => 'Pending',
+                'changed_by' => $request->user()->id,
+                'note' => 'Request submitted.',
+            ]);
+
+            return $serviceRequest;
+        });
+
+        return redirect()->route('requests.show', $serviceRequest)
+            ->with('status', "Request {$serviceRequest->request_number} submitted successfully.");
     }
 
-    private function listing(Request $request, bool $admin): View
+    public function updateStatus(AdvanceServiceRequestStatus $request, ServiceRequest $serviceRequest): RedirectResponse
     {
-        $filters = $request->validate([
-            'search' => ['nullable', 'string', 'max:120'],
-            'status' => ['nullable', Rule::in(ServiceRequest::STATUSES)],
-            'category' => ['nullable', Rule::in(ServiceRequest::CATEGORIES)],
-        ]);
+        $validated = $request->validated();
+        DB::transaction(function () use ($request, $serviceRequest, $validated): void {
+            $lockedRequest = ServiceRequest::query()->lockForUpdate()->findOrFail($serviceRequest->id);
+            $nextStatus = $this->nextStatus($lockedRequest->status);
 
+            if ($validated['status'] !== $nextStatus) {
+                throw ValidationException::withMessages([
+                    'status' => 'Requests can only move forward one status at a time.',
+                ]);
+            }
+
+            $previousStatus = $lockedRequest->status;
+            $lockedRequest->update(['status' => $validated['status']]);
+            $lockedRequest->statusUpdates()->create([
+                'from_status' => $previousStatus,
+                'to_status' => $validated['status'],
+                'changed_by' => $request->user()->id,
+                'note' => $validated['note'] ?? null,
+            ]);
+        });
+
+        return back()->with('status', "{$serviceRequest->request_number} updated to {$validated['status']}.");
+    }
+
+    private function listing(FilterServiceRequests $request, bool $admin): View
+    {
+        $filters = $request->validated();
         $query = ServiceRequest::query()
             ->visibleTo($request->user())
             ->with('citizen:id,name')
-            ->when($filters['search'] ?? null, function ($query, string $search): void {
-                $query->where(function ($query) use ($search): void {
+            ->when($filters['search'] ?? null, function (Builder $query, string $search): void {
+                $query->where(function (Builder $query) use ($search): void {
                     $query->where('request_number', 'like', "%{$search}%")
                         ->orWhere('location', 'like', "%{$search}%")
                         ->orWhere('category', 'like', "%{$search}%")
                         ->orWhere('description', 'like', "%{$search}%")
                         ->orWhere('citizen_name', 'like', "%{$search}%")
-                        ->orWhereHas('citizen', fn ($citizen) => $citizen->where('name', 'like', "%{$search}%"));
+                        ->orWhereHas('citizen', fn (Builder $citizen) => $citizen->where('name', 'like', "%{$search}%"));
                 });
             })
-            ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
-            ->when($filters['category'] ?? null, fn ($query, string $category) => $query->where('category', $category))
+            ->when($filters['status'] ?? null, fn (Builder $query, string $status) => $query->where('status', $status))
+            ->when($filters['category'] ?? null, fn (Builder $query, string $category) => $query->where('category', $category))
             ->latest();
 
         return view('requests.index', [
@@ -115,5 +144,14 @@ class ServiceRequestController extends Controller
             'statuses' => ServiceRequest::STATUSES,
             'admin' => $admin,
         ]);
+    }
+
+    private function nextStatus(string $status): ?string
+    {
+        return match ($status) {
+            'Pending' => 'In Progress',
+            'In Progress' => 'Resolved',
+            default => null,
+        };
     }
 }
