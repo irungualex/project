@@ -16,10 +16,10 @@
     @php($admin = auth()->user()->isAdmin())
     <div class="workspace">
         <aside class="sidebar" id="sidebar">
-            <a class="brand" href="{{ route('dashboard') }}"><span class="brand-mark">C</span><span>CivicDesk</span></a>
+            <a class="brand" href="{{ $admin ? route('admin.dashboard') : route('dashboard') }}"><span class="brand-mark">C</span><span>CivicDesk</span></a>
             <div class="side-label">Workspace</div>
             <nav class="nav-list" aria-label="Main navigation">
-                <a class="nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}"><span class="nav-icon">▦</span><span>Overview</span></a>
+                <a class="nav-item {{ request()->routeIs('dashboard', 'admin.dashboard') ? 'active' : '' }}" href="{{ $admin ? route('admin.dashboard') : route('dashboard') }}"><span class="nav-icon">▦</span><span>Overview</span></a>
                 @if ($admin)
                     <a class="nav-item {{ request()->routeIs('admin.requests.*') ? 'active' : '' }}" href="{{ route('admin.requests.index') }}"><span class="nav-icon">☷</span><span>All requests</span></a>
                 @else

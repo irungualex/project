@@ -13,11 +13,28 @@ class DashboardController extends Controller
     public function __invoke(Request $request): View
     {
         $user = $request->user();
+        if ($user->isAdmin()) {
+            return redirect()->route('admin.dashboard');
+        }
+
+        return view('dashboard', $this->dashboardData($user));
+    }
+
+    public function admin(Request $request): View
+    {
+        abort_unless($request->user()->isAdmin(), 403);
+
+        return view('admin.dashboard', $this->dashboardData($request->user()));
+    }
+
+    /** @return array<string, mixed> */
+    private function dashboardData(User $user): array
+    {
         $requests = ServiceRequest::query()
             ->visibleTo($user)
             ->with('citizen:id,name')
             ->latest()
-            ->limit(5)
+            ->limit(6)
             ->get();
 
         $scope = fn (): Builder => ServiceRequest::query()->visibleTo($user);
@@ -30,7 +47,7 @@ class DashboardController extends Controller
             ['Resolved', 'Pending', 'In Progress', 'Resolved'],
         )->first();
 
-        return view('dashboard', [
+        return [
             'requests' => $requests,
             'total' => (int) $counts->total,
             'open' => (int) $counts->open_count,
@@ -40,6 +57,9 @@ class DashboardController extends Controller
             'citizens' => $user->isAdmin()
                 ? User::query()->where('role', 'citizen')->count()
                 : null,
-        ]);
+            'categories' => $user->isAdmin()
+                ? (clone $scope())->selectRaw('category, COUNT(*) as total')->groupBy('category')->orderByDesc('total')->get()
+                : collect(),
+        ];
     }
 }

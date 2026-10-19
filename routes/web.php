@@ -31,6 +31,7 @@ Route::middleware('auth')->group(function (): void {
 });
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function (): void {
+    Route::get('/dashboard', [DashboardController::class, 'admin'])->name('dashboard');
     Route::get('/requests', [ServiceRequestController::class, 'adminIndex'])->name('requests.index');
     Route::patch('/requests/{serviceRequest}/status', [ServiceRequestController::class, 'updateStatus'])->name('requests.status');
 });
